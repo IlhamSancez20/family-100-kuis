@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kuis Family 100</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="app-container">
+    
+    <header class="app-header">
+      <div class="header-left">
+        <div id="clock-widget" class="clock-card">
+          <span id="clock-time" class="time-text">00:00:00</span>
+          <span id="clock-date" class="date-text">Senin, 1 Jan 2026</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <h1 id="app-title" class="game-title">FAMILY 100 <span>SMP</span></h1>
+      </div>
+
+      <div class="header-right">
+        <div class="audio-controls">
+          <button id="btn-bgm" class="btn-icon" title="Toggle Musik Latar">🎵 BGM: OFF</button>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5" title="Volume">
+        </div>
+        <button id="btn-open-admin" class="btn-primary-sm">⚙️ Host Panel</button>
+      </div>
+    </header>
+
+    <section class="scoreboard-section">
+      <div id="card-team-1" class="team-card team-1 active-turn">
+        <div class="team-badge">TIM 1</div>
+        <h2 id="disp-team1-name" class="team-name">TIM A</h2>
+        <div class="score-box">
+          <span id="disp-team1-score" class="score-val">0</span>
+        </div>
+        <div class="turn-indicator">GILIRAN MAIN</div>
+      </div>
+
+      <div class="round-summary-card">
+        <div class="question-number-badge">RONDE <span id="disp-round-num">1</span></div>
+        <div class="round-score-title">POIN SEMENTARA</div>
+        <div id="disp-round-points" class="round-score-val">0</div>
+        <div id="phase-badge" class="phase-badge normal">FASE UTAMA</div>
+      </div>
+
+      <div id="card-team-2" class="team-card team-2">
+        <div class="team-badge">TIM 2</div>
+        <h2 id="disp-team2-name" class="team-name">TIM B</h2>
+        <div class="score-box">
+          <span id="disp-team2-score" class="score-val">0</span>
+        </div>
+        <div class="turn-indicator">GILIRAN MAIN</div>
+      </div>
+    </section>
+
+    <section class="question-section">
+      <div class="question-card">
+        <span class="q-label">PERTANYAAN:</span>
+        <h3 id="disp-question-text" class="q-text">Memuat Soal...</h3>
+      </div>
+    </section>
+
+    <main class="board-section">
+      <div id="answer-board" class="answer-board-grid">
+      </div>
+    </main>
+
+    <section class="input-section">
+      <form id="form-answer" class="answer-form" onsubmit="return false;">
+        <input type="text" id="input-answer" placeholder="Ketik jawaban peserta di sini..." autocomplete="off">
+        <button type="submit" id="btn-submit-answer" class="btn-action btn-submit">Jawab (Enter)</button>
+        <button type="button" id="btn-manual-wrong" class="btn-action btn-wrong">❌ Salah (Strike)</button>
+      </form>
+    </section>
+
+    <footer class="host-toolbar">
+      <div class="toolbar-group">
+        <button id="btn-prev-q" class="btn-control">◀ Soal Sebelum</button>
+        <button id="btn-next-q" class="btn-control">Soal Selanjutnya ▶</button>
+      </div>
+
+      <div class="toolbar-group">
+        <button id="btn-switch-team" class="btn-control highlight">🔄 Ganti Tim Aktif</button>
+        <button id="btn-reset-strikes" class="btn-control warning">⚠️ Reset Strike</button>
+        <button id="btn-reveal-all" class="btn-control info">👁️ Buka Sisa Jawaban</button>
+      </div>
+    </footer>
+
+  </div>
+
+  <div id="strike-overlay" class="strike-overlay hidden">
+    <div id="strike-container" class="strike-container"></div>
+  </div>
+
+  <div id="admin-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>⚙️ Host Panel & Pengaturan Game</h2>
+        <button id="btn-close-admin" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="cfg-app-title">Judul Aplikasi:</label>
+          <input type="text" id="cfg-app-title" value="FAMILY 100 SMP">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cfg-team1-name">Nama Tim 1:</label>
+            <input type="text" id="cfg-team1-name" value="TIM A">
+          </div>
+          <div class="form-group">
+            <label for="cfg-team2-name">Nama Tim 2:</label>
+            <input type="text" id="cfg-team2-name" value="TIM B">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="cfg-gas-url">Google Apps Script Web App URL (REST API):</label>
+          <input type="text" id="cfg-gas-url" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+
+        <div class="admin-actions">
+          <button id="btn-sync-gas" class="btn-primary">🔄 Sync Data dari Google Sheets</button>
+          <button id="btn-reset-scores" class="btn-danger">♻️ Reset Semua Skor Tim</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-save-admin" class="btn-primary">Simpan & Terapkan</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
