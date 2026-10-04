@@ -1,144 +1,194 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kuis Family 100</title>
+  <title>Kuis Interaktif Family 100</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <header class="glass-panel">
+    <div class="app-title-group">
+      <div class="app-title" id="appTitleText" onclick="openTitleModal()" title="Klik untuk ubah judul">
+        KUIS FAMILY 100 SMP
+      </div>
+      <div class="realtime-clock" id="clockDisplay">00:00:00</div>
+    </div>
 
-  <div class="bg-glow bg-glow-1"></div>
-  <div class="bg-glow bg-glow-2"></div>
-
-  <div class="app-container">
+    <div class="header-actions">
+      <button class="btn-icon" onclick="toggleLanguage()" id="langBtn">🌐 ID</button>
+      <button class="btn-icon" onclick="toggleTheme()" id="themeBtn">🌙 Dark</button>
+      <button class="btn-icon" onclick="openCrudModal()" id="crudBtn">⚙️ Soal</button>
+    </div>
+  </header>
+  <main class="game-container">
     
-    <header class="app-header">
-      <div class="header-left">
-        <div id="clock-widget" class="clock-card">
-          <span id="clock-time" class="time-text">00:00:00</span>
-          <span id="clock-date" class="date-text">Senin, 1 Jan 2026</span>
+    <div class="scoreboard-row">
+      <div class="glass-panel team-card team-a" id="teamACard">
+        <div class="team-name" id="teamANameDisplay">
+          <span id="teamANameText">TIM A</span>
+          <span style="font-size:0.8rem; cursor:pointer;" onclick="editTeamName('A')">✏️</span>
+        </div>
+        <div class="team-score" id="teamAScore">0</div>
+      </div>
+
+      <div class="glass-panel pot-card">
+        <div class="pot-label" id="i18nPotLabel">POT POIN RONDE</div>
+        <div class="pot-score" id="roundPotScore">0</div>
+        <div class="round-badge" id="roundBadge">RONDE 1 / 5</div>
+      </div>
+
+      <div class="glass-panel team-card team-b" id="teamBCard">
+        <div class="team-name" id="teamBNameDisplay">
+          <span id="teamBNameText">TIM B</span>
+          <span style="font-size:0.8rem; cursor:pointer;" onclick="editTeamName('B')">✏️</span>
+        </div>
+        <div class="team-score" id="teamBScore">0</div>
+      </div>
+    </div>
+
+    <div class="glass-panel status-bar">
+      <div class="timer-container">
+        <span style="font-size: 1.2rem;">⏱️</span>
+        <div class="timer-display" id="timerDisplay">05:00</div>
+        <button class="btn-icon" id="timerToggleBtn" onclick="toggleTimer()">▶️️</button>
+        <button class="btn-icon" onclick="resetTimer()">🔄</button>
+      </div>
+
+      <div class="strike-container">
+        <span class="strike-title" id="i18nStrikeTitle">STRIKE:</span>
+        <div class="strike-box">
+          <div class="strike-x" id="strike1">X</div>
+          <div class="strike-x" id="strike2">X</div>
+          <div class="strike-x" id="strike3">X</div>
         </div>
       </div>
+    </div>
 
-      <div class="header-center">
-        <h1 id="app-title" class="game-title">FAMILY 100 <span>SMP</span></h1>
+    <div class="turn-banner main-turn" id="turnBanner">
+      GILIRAN: <span id="activeTeamNameText">TIM A</span>
+    </div>
+
+    <div class="glass-panel question-box" id="questionTextDisplay">
+      Memuat Soal...
+    </div>
+
+    <div class="board-grid" id="boardGrid">
+    </div>
+
+    <form class="input-section" onsubmit="handleAnswerSubmit(event)">
+      <input type="text" class="answer-input" id="answerInput" placeholder="Ketik jawaban di sini lalu Tekan Enter..." autocomplete="off">
+      <button type="submit" class="btn-submit" id="i18nSubmitBtn">JAWAB</button>
+    </form>
+
+    <div class="glass-panel host-control-bar">
+      <button class="btn-host" onclick="switchActiveTeam()">🔀 <span id="i18nSwitchTeam">Pindah Tim</span></button>
+      <button class="btn-host" onclick="resetStrikesManual()">🧹 <span id="i18nResetStrike">Reset Strike</span></button>
+      <button class="btn-host" onclick="nextQuestion()">⏩ <span id="i18nNextQuestion">Pindah Soal</span></button>
+      <button class="btn-host" onclick="openQuickAddModal()">➕ <span id="i18nQuickAdd">Tambah Soal</span></button>
+      <button class="btn-host danger" onclick="confirmResetGame()">🔄 <span id="i18nResetGame">Reset Game</span></button>
+    </div>
+
+  </main>
+
+  <div class="strike-overlay" id="strikeOverlay">
+    <div class="big-strike-x">X</div>
+  </div>
+  <div class="modal-backdrop" id="customConfirmModal">
+    <div class="glass-panel modal-content" style="max-width: 480px; text-align: center;">
+      <div class="modal-title" id="customConfirmTitle" style="margin-bottom: 15px;">Konfirmasi</div>
+      <p id="customConfirmMessage" style="color: var(--text-main); font-size: 1.05rem; margin-bottom: 25px; line-height: 1.5;"></p>
+      <div class="modal-actions" style="justify-content: center;">
+        <button class="btn-host" onclick="handleConfirmResult(false)" style="padding: 10px 24px;">Batal</button>
+        <button class="btn-submit" onclick="handleConfirmResult(true)" style="padding: 10px 24px;">Ya, Lanjutkan</button>
       </div>
-
-      <div class="header-right">
-        <div class="audio-controls">
-          <button id="btn-bgm" class="btn-icon" title="Toggle Musik Latar">🎵 BGM: OFF</button>
-          <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5" title="Volume">
-        </div>
-        <button id="btn-open-admin" class="btn-primary-sm">⚙️ Host Panel</button>
-      </div>
-    </header>
-
-    <section class="scoreboard-section">
-      <div id="card-team-1" class="team-card team-1 active-turn">
-        <div class="team-badge">TIM 1</div>
-        <h2 id="disp-team1-name" class="team-name">TIM A</h2>
-        <div class="score-box">
-          <span id="disp-team1-score" class="score-val">0</span>
-        </div>
-        <div class="turn-indicator">GILIRAN MAIN</div>
-      </div>
-
-      <div class="round-summary-card">
-        <div class="question-number-badge">RONDE <span id="disp-round-num">1</span></div>
-        <div class="round-score-title">POIN SEMENTARA</div>
-        <div id="disp-round-points" class="round-score-val">0</div>
-        <div id="phase-badge" class="phase-badge normal">FASE UTAMA</div>
-      </div>
-
-      <div id="card-team-2" class="team-card team-2">
-        <div class="team-badge">TIM 2</div>
-        <h2 id="disp-team2-name" class="team-name">TIM B</h2>
-        <div class="score-box">
-          <span id="disp-team2-score" class="score-val">0</span>
-        </div>
-        <div class="turn-indicator">GILIRAN MAIN</div>
-      </div>
-    </section>
-
-    <section class="question-section">
-      <div class="question-card">
-        <span class="q-label">PERTANYAAN:</span>
-        <h3 id="disp-question-text" class="q-text">Memuat Soal...</h3>
-      </div>
-    </section>
-
-    <main class="board-section">
-      <div id="answer-board" class="answer-board-grid">
-      </div>
-    </main>
-
-    <section class="input-section">
-      <form id="form-answer" class="answer-form" onsubmit="return false;">
-        <input type="text" id="input-answer" placeholder="Ketik jawaban peserta di sini..." autocomplete="off">
-        <button type="submit" id="btn-submit-answer" class="btn-action btn-submit">Jawab (Enter)</button>
-        <button type="button" id="btn-manual-wrong" class="btn-action btn-wrong">❌ Salah (Strike)</button>
-      </form>
-    </section>
-
-    <footer class="host-toolbar">
-      <div class="toolbar-group">
-        <button id="btn-prev-q" class="btn-control">◀ Soal Sebelum</button>
-        <button id="btn-next-q" class="btn-control">Soal Selanjutnya ▶</button>
-      </div>
-
-      <div class="toolbar-group">
-        <button id="btn-switch-team" class="btn-control highlight">🔄 Ganti Tim Aktif</button>
-        <button id="btn-reset-strikes" class="btn-control warning">⚠️ Reset Strike</button>
-        <button id="btn-reveal-all" class="btn-control info">👁️ Buka Sisa Jawaban</button>
-      </div>
-    </footer>
-
+    </div>
   </div>
 
-  <div id="strike-overlay" class="strike-overlay hidden">
-    <div id="strike-container" class="strike-container"></div>
+  <div class="modal-backdrop" id="customAlertModal">
+    <div class="glass-panel modal-content" style="max-width: 450px; text-align: center;">
+      <div class="modal-title" id="customAlertTitle" style="margin-bottom: 15px;">Informasi</div>
+      <p id="customAlertMessage" style="color: var(--text-main); font-size: 1.05rem; margin-bottom: 25px; line-height: 1.5;"></p>
+      <button class="btn-submit" onclick="closeCustomAlert()" style="width: 100%; padding: 12px;">OK</button>
+    </div>
   </div>
 
-  <div id="admin-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
+  <div class="modal-backdrop" id="customPromptModal">
+    <div class="glass-panel modal-content" style="max-width: 480px;">
       <div class="modal-header">
-        <h2>⚙️ Host Panel & Pengaturan Game</h2>
-        <button id="btn-close-admin" class="btn-close">&times;</button>
+        <div class="modal-title" id="customPromptTitle">Ubah Data</div>
+        <button class="btn-close" onclick="closeCustomPrompt()">&times;</button>
       </div>
-      <div class="modal-body">
+      <form onsubmit="handlePromptSubmit(event)">
         <div class="form-group">
-          <label for="cfg-app-title">Judul Aplikasi:</label>
-          <input type="text" id="cfg-app-title" value="FAMILY 100 SMP">
+          <input type="text" class="form-control" id="customPromptInput" required style="font-size: 1.1rem; padding: 12px;">
         </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="cfg-team1-name">Nama Tim 1:</label>
-            <input type="text" id="cfg-team1-name" value="TIM A">
-          </div>
-          <div class="form-group">
-            <label for="cfg-team2-name">Nama Tim 2:</label>
-            <input type="text" id="cfg-team2-name" value="TIM B">
-          </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-host" onclick="closeCustomPrompt()">Batal</button>
+          <button type="submit" class="btn-submit" style="padding: 10px 24px;">Simpan</button>
         </div>
+      </form>
+    </div>
+  </div>
 
+  <div class="modal-backdrop" id="crudModal">
+    <div class="glass-panel modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="i18nCrudTitle">Manajemen Soal & Jawaban</div>
+        <button class="btn-close" onclick="closeCrudModal()">&times;</button>
+      </div>
+      <div id="crudQuestionList"></div>
+      <hr style="border-color: var(--card-border); margin: 20px 0;">
+      <button class="btn-submit" style="width:100%; padding: 12px;" onclick="openQuestionForm()">+ Tambah Soal Baru</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="formModal">
+    <div class="glass-panel modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="formModalTitle">Form Soal</div>
+        <button class="btn-close" onclick="closeFormModal()">&times;</button>
+      </div>
+      <form onsubmit="saveQuestionForm(event)">
+        <input type="hidden" id="formQId">
         <div class="form-group">
-          <label for="cfg-gas-url">Google Apps Script Web App URL (REST API):</label>
-          <input type="text" id="cfg-gas-url" placeholder="https://script.google.com/macros/s/.../exec">
+          <label class="form-label">Pertanyaan:</label>
+          <input type="text" class="form-control" id="formQPertanyaan" required>
         </div>
+        <div class="form-group">
+          <label class="form-label">Jawaban & Poin (Maksimal 10 Slot):</label>
+          <div id="answerSlotsContainer"></div>
+        </div>
+        <button type="submit" class="btn-submit" style="width:100%; padding: 12px;">Simpan Soal</button>
+      </form>
+    </div>
+  </div>
 
-        <div class="admin-actions">
-          <button id="btn-sync-gas" class="btn-primary">🔄 Sync Data dari Google Sheets</button>
-          <button id="btn-reset-scores" class="btn-danger">♻️ Reset Semua Skor Tim</button>
-        </div>
+  <div class="modal-backdrop" id="titleModal">
+    <div class="glass-panel modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Ubah Judul Aplikasi</div>
+        <button class="btn-close" onclick="closeTitleModal()">&times;</button>
       </div>
-      <div class="modal-footer">
-        <button id="btn-save-admin" class="btn-primary">Simpan & Terapkan</button>
+      <div class="form-group">
+        <label class="form-label">Judul Baru:</label>
+        <input type="text" class="form-control" id="newAppTitleInput">
       </div>
+      <button class="btn-submit" style="width:100%; padding: 12px;" onclick="saveAppTitle()">Simpan Judul</button>
+    </div>
+  </div>
+
+  <!-- Winner Celebration Modal -->
+  <div class="modal-backdrop" id="winnerModal">
+    <div class="glass-panel modal-content winner-box">
+      <div class="winner-trophy">🏆</div>
+      <div class="winner-name" id="winnerText">TIM A MENANG!</div>
+      <div class="winner-scores" id="winnerScoresText">Skor Akhir: 250 vs 140</div>
+      <button class="btn-submit" style="padding: 12px 30px;" onclick="restartFullGame()">🎮 MAIN LAGI</button>
     </div>
   </div>
 
