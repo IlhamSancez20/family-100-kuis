@@ -185,7 +185,7 @@ let strikes = 0;
 let isStealTurn = false;
 let roundEnded = false;
 
-let timerSeconds = 300; // 5 Menit = 300 Detik
+let timerSeconds = 300;
 let timerInterval = null;
 let isTimerRunning = false;
 
@@ -249,19 +249,20 @@ function startRealtimeClock() {
 
 async function fetchQuestionsFromDatabase() {
   try {
-    const response = await fetch(GAS_API_URL);
-    if (!response.ok) throw new Error("Gagal mengambil data dari Google Apps Script");
+    const response = await fetch(`${GAS_API_URL}?action=getQuestions`);
+    if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
+
     const data = await response.json();
-    
     if (Array.isArray(data) && data.length > 0) {
       questionsList = data;
     } else {
       questionsList = DUMMY_QUESTIONS;
     }
   } catch (error) {
-    console.warn("Gagal terhubung ke API Google Apps Script. Menggunakan data lokal.", error);
+    console.warn("Beralih ke soal bawaan lokal.", error);
     questionsList = DUMMY_QUESTIONS;
   }
+
   initGame();
 }
 
@@ -345,7 +346,7 @@ function loadRound(index) {
     manual: false
   }));
 
-  setTimerSeconds(300); // 5 Menit Awal
+  setTimerSeconds(300);
   stopTimer();
 
   renderBoard();
@@ -361,7 +362,6 @@ function renderBoard() {
   currentAnswerStates.forEach((ans, idx) => {
     const container = document.createElement('div');
     container.className = `tile-container ${ans.revealed ? 'flipped' : ''} ${ans.manual ? 'manual-revealed' : ''}`;
-    
     container.onclick = () => handleManualTileClick(idx);
 
     container.innerHTML = `
@@ -431,19 +431,13 @@ function isExactOrStrictMatch(input, target) {
   const normTarget = normalizeStr(target);
 
   if (!normInput || !normTarget) return false;
-
-  // Exact Match (Sama persis secara keseluruhan)
   if (normInput === normTarget) return true;
 
   const inputWords = normInput.split(' ');
   const targetWords = normTarget.split(' ');
 
-  // Jika jumlah kata kurang/berbeda, langsung DIANGGAP SALAH
-  if (inputWords.length !== targetWords.length) {
-    return false;
-  }
+  if (inputWords.length !== targetWords.length) return false;
 
-  // Toleransi ejaan kecil (misal: typo 1 huruf) hanya jika jumlah kata & panjang teks sama
   const dist = levenshteinDistance(normInput, normTarget);
   const maxLen = Math.max(normInput.length, normTarget.length);
   return (1 - (dist / maxLen)) >= 0.85; 
@@ -499,16 +493,18 @@ function handleAnswerSubmit(e) {
       const allRevealed = currentAnswerStates.every(a => a.revealed);
       if (allRevealed) {
         awardRoundPotToTeam(activeTeam);
+      } else {
+        setTimerSeconds(300);
       }
     } else {
-      // PERCOBAAN STEAL BERHASIL
       roundPot += currentAnswerStates[matchIndex].poin;
       awardRoundPotToTeam(activeTeam);
     }
-
   } else {
-    // JAWABAN SALAH / KURANG KATA
     processWrongAnswer();
+    if (!isStealTurn) {
+      setTimerSeconds(300);
+    }
   }
 }
 
@@ -521,16 +517,14 @@ function processWrongAnswer() {
     updateRoundUI();
 
     if (strikes >= 3) {
-      // PERALIHAN KE FASE STEAL (10 MENIT = 600 DETIK)
       isStealTurn = true;
       activeTeam = (mainTurnTeam === 'A') ? 'B' : 'A';
       setTimerSeconds(600);
       audioFX.playStealAlert();
       updateRoundUI();
-      startTimer(); // Auto hitung mundur 10 menit
+      startTimer();
     }
   } else {
-    // FASE STEAL GAGAL -> POIN MASUK KE TIM UTAMA
     awardRoundPotToTeam(mainTurnTeam);
   }
 }
@@ -598,7 +592,6 @@ function startTimer() {
       timerSeconds--;
       updateTimerDisplay();
     } else {
-      // WAKTU HABIS: OTOMATIS STRIKE & HANDLE TIMER NEXT TURN
       handleTimerTimeout();
     }
   }, 1000);
@@ -614,7 +607,6 @@ function handleTimerTimeout() {
     updateRoundUI();
 
     if (strikes >= 3) {
-      // PINDAH KE FASE STEAL (10 MENIT = 600 DETIK) & AUTO START
       isStealTurn = true;
       activeTeam = (mainTurnTeam === 'A') ? 'B' : 'A';
       setTimerSeconds(600);
@@ -622,12 +614,10 @@ function handleTimerTimeout() {
       updateRoundUI();
       startTimer();
     } else {
-      // MASIH FASE UTAMA (<3 STRIKE): AUTO HITUNG MUNDUR 5 MENIT (300 DETIK) LAGI
       setTimerSeconds(300);
       startTimer();
     }
   } else {
-    // FASE STEAL (10 MENIT) WAKTU HABIS -> STRIKE & GALGAL STEAL
     awardRoundPotToTeam(mainTurnTeam);
   }
 }
@@ -717,7 +707,7 @@ async function saveGameHistory(winnerTag) {
       body: JSON.stringify(payload)
     });
   } catch (err) {
-    console.warn("Gagal menyimpan riwayat game ke Apps Script API", err);
+    console.warn("Gagal menyimpan riwayat game ke Google Apps Script.", err);
   }
 }
 
@@ -746,50 +736,105 @@ function renderCrudQuestionList() {
       <div style="flex:1;">
         <strong>Soal ${idx + 1}:</strong> ${q.pertanyaan} (${q.jawaban.length} Jawaban)
       </div>
-      <button class="btn-host" onclick="openQuestionForm(${idx})">✏ Edit</button>
+      <button class="btn-host" onclick="openFormModal(${idx})">✏ Edit</button>
       <button class="btn-host danger" onclick="deleteQuestion(${q.id})">🗑 Hapus</button>
     `;
     container.appendChild(item);
   });
 }
 
-function openQuestionForm(index = null) {
+/* Slot Jawaban Dinamis */
+function createAnswerSlotHTML(index, teks = '', poin = '') {
+  return `
+    <div class="answer-row-item">
+      <span class="answer-num">#${index + 1}</span>
+      <input type="text" class="form-control input-answer-text" placeholder="Teks Jawaban ${index + 1}" value="${teks}" required>
+      <input type="number" class="form-control input-answer-poin" placeholder="Poin" value="${poin}" min="1" max="100" required>
+      <button type="button" class="btn-remove-row" onclick="removeAnswerSlot(this)" title="Hapus Slot">&times;</button>
+    </div>
+  `;
+}
+
+function updateSlotUI() {
+  const container = document.getElementById('answerSlotsContainer');
+  const rows = container.querySelectorAll('.answer-row-item');
+  const count = rows.length;
+
+  rows.forEach((row, i) => {
+    row.querySelector('.answer-num').textContent = `#${i + 1}`;
+    row.querySelector('.input-answer-text').placeholder = `Teks Jawaban ${i + 1}`;
+    
+    const btnRemove = row.querySelector('.btn-remove-row');
+    if (btnRemove) {
+      btnRemove.style.visibility = (count <= 2) ? 'hidden' : 'visible';
+    }
+  });
+
+  const badge = document.getElementById('slotCountBadge');
+  if (badge) badge.textContent = `${count} / 10 Slot`;
+
+  const btnAdd = document.getElementById('btnAddSlot');
+  if (btnAdd) {
+    btnAdd.disabled = (count >= 10);
+    btnAdd.style.opacity = (count >= 10) ? '0.4' : '1';
+    btnAdd.style.cursor = (count >= 10) ? 'not-allowed' : 'pointer';
+  }
+}
+
+function addAnswerSlot(teks = '', poin = '') {
+  const container = document.getElementById('answerSlotsContainer');
+  const count = container.querySelectorAll('.answer-row-item').length;
+  if (count >= 10) return;
+
+  const temp = document.createElement('div');
+  temp.innerHTML = createAnswerSlotHTML(count, teks, poin);
+  container.appendChild(temp.firstElementChild);
+
+  updateSlotUI();
+}
+
+function removeAnswerSlot(btn) {
+  const container = document.getElementById('answerSlotsContainer');
+  const count = container.querySelectorAll('.answer-row-item').length;
+  if (count <= 2) return;
+
+  btn.closest('.answer-row-item').remove();
+  updateSlotUI();
+}
+
+function openFormModal(index = null) {
+  const modal = document.getElementById('formModal');
   const container = document.getElementById('answerSlotsContainer');
   container.innerHTML = '';
 
-  if (index !== null) {
+  if (index !== null && questionsList[index]) {
     const q = questionsList[index];
-    document.getElementById('formQId').value = q.id;
-    document.getElementById('formQPertanyaan').value = q.pertanyaan;
+    document.getElementById('formModalTitle').textContent = "Edit Soal";
+    document.getElementById('formQId').value = q.id || '';
+    document.getElementById('formQPertanyaan').value = q.pertanyaan || '';
 
-    for (let i = 0; i < 10; i++) {
-      const ans = q.jawaban[i] || {teks: '', poin: ''};
-      addAnswerSlotRow(container, i + 1, ans.teks, ans.poin);
+    if (q.jawaban && q.jawaban.length > 0) {
+      q.jawaban.forEach(j => addAnswerSlot(j.teks, j.poin));
+    }
+    
+    while (container.querySelectorAll('.answer-row-item').length < 2) {
+      addAnswerSlot();
     }
   } else {
+    document.getElementById('formModalTitle').textContent = "Tambah Soal Baru";
     document.getElementById('formQId').value = '';
     document.getElementById('formQPertanyaan').value = '';
-    for (let i = 0; i < 6; i++) {
-      addAnswerSlotRow(container, i + 1, '', '');
-    }
+    
+    addAnswerSlot();
+    addAnswerSlot();
   }
 
   document.getElementById('crudModal').classList.remove('active');
-  document.getElementById('formModal').classList.add('active');
-}
-
-function addAnswerSlotRow(container, num, teks, poin) {
-  const row = document.createElement('div');
-  row.className = 'answer-row-grid';
-  row.innerHTML = `
-    <input type="text" class="form-control ans-teks" placeholder="Jawaban ${num}" value="${teks}">
-    <input type="number" class="form-control ans-poin" placeholder="Poin" value="${poin}">
-  `;
-  container.appendChild(row);
+  modal.classList.add('active');
 }
 
 function openQuickAddModal() {
-  openQuestionForm(null);
+  openFormModal(null);
 }
 
 function closeFormModal() {
@@ -798,30 +843,39 @@ function closeFormModal() {
 
 async function saveQuestionForm(e) {
   e.preventDefault();
+
   const id = document.getElementById('formQId').value;
-  const pertanyaan = document.getElementById('formQPertanyaan').value;
+  const pertanyaan = document.getElementById('formQPertanyaan').value.trim();
+  const rows = document.querySelectorAll('#answerSlotsContainer .answer-row-item');
 
-  const answerRows = document.querySelectorAll('.answer-row-grid');
   const jawaban = [];
-
-  answerRows.forEach(row => {
-    const teks = row.querySelector('.ans-teks').value.trim();
-    const poin = row.querySelector('.ans-poin').value.trim();
-    if (teks !== "") {
-      jawaban.push({ teks, poin: Number(poin) || 0 });
+  rows.forEach(row => {
+    const teks = row.querySelector('.input-answer-text').value.trim();
+    const poin = parseInt(row.querySelector('.input-answer-poin').value) || 0;
+    if (teks) {
+      jawaban.push({ teks, poin });
     }
   });
 
-  const questionObj = { id: id ? Number(id) : Date.now(), pertanyaan, jawaban };
+  if (jawaban.length < 2) {
+    showCustomAlert("Peringatan", "Minimal harus mengisi 2 jawaban!");
+    return;
+  }
+
+  const questionObj = {
+    id: id ? parseInt(id) : Date.now(),
+    pertanyaan: pertanyaan,
+    jawaban: jawaban
+  };
 
   try {
     await fetch(GAS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: "saveQuestion", data: questionObj })
+      body: JSON.stringify({ action: 'saveQuestion', data: questionObj })
     });
   } catch (err) {
-    console.warn("Simpan ke database gagal, menyimpan secara lokal", err);
+    console.warn("Gagal terhubung ke API Google Sheets, disimpan secara lokal.", err);
   }
 
   if (id) {
@@ -844,7 +898,7 @@ function deleteQuestion(id) {
         body: JSON.stringify({ action: "deleteQuestion", id: id })
       });
     } catch (err) {
-      console.warn("Hapus database gagal, menghapus lokal", err);
+      console.warn("Hapus database gagal, menghapus lokal.", err);
     }
     questionsList = questionsList.filter(q => q.id !== id);
     renderCrudQuestionList();
